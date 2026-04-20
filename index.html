@@ -14,91 +14,99 @@ body {
   background: linear-gradient(180deg, #eef2ff, #ffffff);
 }
 
-.face {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
+.chat-box {
+  height: 80vh;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.msg {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 10px;
+  max-width: 80%;
+  white-space: pre-wrap;
+}
+
+.user {
   background: #4f46e5;
-  margin: auto;
-  position: relative;
-  animation: pulse 2s infinite;
+  color: white;
+  margin-left: auto;
 }
 
-.eye {
-  width: 10px;
-  height: 10px;
+.ai {
+  background: #f3f4f6;
+}
+
+.input-area {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #ddd;
   background: white;
-  border-radius: 50%;
-  position: absolute;
-  top: 40px;
 }
 
-.eye.left { left: 35px; }
-.eye.right { right: 35px; }
-
-.mouth {
-  width: 30px;
-  height: 10px;
-  border-bottom: 3px solid white;
-  position: absolute;
-  bottom: 35px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 50%;
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
 }
 
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+button {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+}
+
+.send {
+  background: #4f46e5;
+  color: white;
+}
+
+.mic {
+  background: #16a34a;
+  color: white;
 }
 </style>
 </head>
 
-<body class="h-screen flex flex-col">
+<body>
 
-<div class="p-3 bg-white text-center shadow">
-  <h1 class="font-bold">📘 AI English Tutor Pro</h1>
-</div>
+<h2 class="text-center p-3 font-bold">📘 AI English Tutor</h2>
 
-<div id="chat" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+<div id="chat" class="chat-box"></div>
 
-<div class="p-3 bg-white border-t flex gap-2">
-  <input id="input"
-    class="flex-1 border p-2 rounded-xl"
-    placeholder="Type your sentence..."
-  />
+<div class="input-area">
 
-  <button onclick="send()"
-    class="bg-indigo-600 text-white px-4 rounded-xl">
-    Send
-  </button>
+  <button class="mic" onclick="startMic()">🎤</button>
+
+  <input id="input" placeholder="Type or speak..." />
+
+  <button class="send" onclick="send()">Send</button>
+
 </div>
 
 <script>
 
 const API = "https://giulia-english-tutor-backend-1.onrender.com";
 
-function addMsg(text, role) {
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+
+function addMsg(text, type) {
   const div = document.createElement("div");
-
-  div.className =
-    "p-3 rounded-xl max-w-[80%] whitespace-pre-wrap " +
-    (role === "user"
-      ? "bg-indigo-600 text-white ml-auto"
-      : "bg-gray-100");
-
+  div.className = "msg " + (type === "user" ? "user" : "ai");
   div.innerText = text;
-
-  document.getElementById("chat").appendChild(div);
-  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
 }
 
-async function send(textOverride) {
+// ✅ FIXED SEND FUNCTION (GLOBAL)
+window.send = async function () {
 
-  const input = document.getElementById("input");
-  const text = textOverride || input.value;
-
+  const text = input.value.trim();
   if (!text) return;
 
   addMsg(text, "user");
@@ -115,10 +123,58 @@ async function send(textOverride) {
 
     const data = await res.json();
 
-    // remove "Thinking..."
-    const chat = document.getElementById("chat");
     chat.removeChild(chat.lastChild);
 
     let reply = data.reply || "No response";
 
-    if (data.rewrite) reply += "\n\n✍️ Rewrite
+    if (data.rewrite) reply += "\n\n✍️ Rewrite: " + data.rewrite;
+    if (data.sat_domain) reply += "\n📘 SAT: " + data.sat_domain;
+    if (data.vocabulary_boost) reply += "\n🧠 Words: " + data.vocabulary_boost;
+    if (data.study_tip) reply += "\n💡 Tip: " + data.study_tip;
+
+    addMsg(reply, "ai");
+
+  } catch (err) {
+    chat.removeChild(chat.lastChild);
+    addMsg("Error connecting to server", "ai");
+  }
+};
+
+// ✅ MIC FUNCTION
+function startMic() {
+
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    alert("Mic not supported in this browser");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    addMsg("🎤 Listening...", "ai");
+  };
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    input.value = text;
+    send();
+  };
+
+  recognition.onerror = () => {
+    addMsg("Mic error. Try again.", "ai");
+  };
+
+  recognition.start();
+}
+
+addMsg("Welcome 👋 Type or speak a sentence to start learning English!", "ai");
+
+</script>
+
+</body>
+</html>
