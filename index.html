@@ -1,201 +1,198 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>English Tutor</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI English Tutor Pro</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-    }
+<script src="https://cdn.tailwindcss.com"></script>
 
-    .app {
-      max-width: 600px;
-      margin: auto;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      background: white;
-    }
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(180deg, #eef2ff, #ffffff);
+}
 
-    header {
-      background: #4f46e5;
-      color: white;
-      padding: 15px;
-      text-align: center;
-      font-weight: bold;
-    }
+/* AI FACE */
+.face {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: #4f46e5;
+  margin: auto;
+  position: relative;
+  animation: pulse 2s infinite;
+}
 
-    .chat {
-      flex: 1;
-      padding: 10px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
+.eye {
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 40px;
+}
 
-    .msg {
-      padding: 10px;
-      margin: 6px 0;
-      border-radius: 12px;
-      max-width: 80%;
-      white-space: pre-line;
-    }
+.eye.left { left: 35px; }
+.eye.right { right: 35px; }
 
-    .user {
-      background: #4f46e5;
-      color: white;
-      align-self: flex-end;
-      text-align: right;
-    }
+.mouth {
+  width: 30px;
+  height: 10px;
+  border-bottom: 3px solid white;
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+}
 
-    .ai {
-      background: #eee;
-      align-self: flex-start;
-    }
-
-    .input-area {
-      display: flex;
-      padding: 10px;
-      border-top: 1px solid #ddd;
-      background: white;
-    }
-
-    input {
-      flex: 1;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-    }
-
-    button {
-      margin-left: 10px;
-      padding: 12px;
-      background: #4f46e5;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-
-    button:hover {
-      background: #4338ca;
-    }
-  </style>
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+</style>
 </head>
 
-<body>
+<body class="h-screen flex flex-col">
 
-<div class="app">
+<!-- HEADER -->
+<div class="p-3 bg-white text-center shadow">
+  <h1 class="font-bold">📘 AI English Tutor Pro</h1>
+</div>
 
-  <header>📘 English Tutor</header>
+<!-- MODE BUTTON -->
+<div class="p-2 flex justify-center">
+  <button onclick="toggleMode()"
+    class="bg-indigo-600 text-white px-4 py-2 rounded-xl">
+    Switch Talk Mode 🎤
+  </button>
+</div>
 
-  <div class="chat" id="chat">
-    <div class="msg ai">
-Hi! I’m your AI English tutor 😊  
-Write a sentence and I’ll help you improve it.
-    </div>
+<!-- CHAT MODE -->
+<div id="chatMode" class="flex flex-col flex-1 p-3 overflow-y-auto">
+  <div id="chat" class="space-y-2 flex flex-col"></div>
+</div>
+
+<!-- TALK MODE -->
+<div id="talkMode" class="hidden flex flex-col flex-1 items-center justify-center">
+
+  <div class="face">
+    <div class="eye left"></div>
+    <div class="eye right"></div>
+    <div class="mouth"></div>
   </div>
 
-  <div class="input-area">
-    <input id="input" placeholder="Type your sentence..." />
-    <button onclick="send()">Send</button>
-  </div>
+  <p id="status" class="mt-6 text-gray-600">Tap mic and speak...</p>
+
+</div>
+
+<!-- INPUT -->
+<div class="p-3 bg-white border-t flex gap-2">
+
+  <button onclick="startVoice()" class="bg-green-500 text-white px-4 rounded-xl">
+    🎤
+  </button>
+
+  <input id="input"
+    class="flex-1 border p-2 rounded-xl"
+    placeholder="Type your sentence..."
+  />
+
+  <button onclick="send()"
+    class="bg-indigo-600 text-white px-4 rounded-xl">
+    Send
+  </button>
 
 </div>
 
 <script>
-/* ✅ UPDATED TO NEW GROQ BACKEND */
+
 const API = "https://giulia-english-tutor-backend-1.onrender.com";
 
-// Add message
-function addMsg(text, type, id = null) {
-  const div = document.createElement("div");
-  div.className = "msg " + type;
-  div.innerText = text;
+let talkMode = false;
 
-  if (id) div.id = id;
+// ---------------- MODE ----------------
+function toggleMode() {
+  talkMode = !talkMode;
 
-  document.getElementById("chat").appendChild(div);
-
-  // auto scroll
-  const chat = document.getElementById("chat");
-  chat.scrollTop = chat.scrollHeight;
+  document.getElementById("chatMode").classList.toggle("hidden");
+  document.getElementById("talkMode").classList.toggle("hidden");
 }
 
-// Send message
-async function send() {
+// ---------------- CHAT ----------------
+function addMsg(text, role) {
+  const div = document.createElement("div");
+
+  div.className =
+    "p-3 rounded-xl max-w-[80%] whitespace-pre-wrap " +
+    (role === "user"
+      ? "bg-indigo-600 text-white ml-auto"
+      : "bg-gray-100");
+
+  div.innerText = text;
+
+  document.getElementById("chat").appendChild(div);
+}
+
+// ---------------- SEND ----------------
+async function send(textOverride) {
+
   const input = document.getElementById("input");
-  const text = input.value.trim();
+  const text = textOverride || input.value;
+
   if (!text) return;
 
   addMsg(text, "user");
   input.value = "";
 
-  const loadingId = "loading-" + Date.now();
-  addMsg("Thinking...", "ai", loadingId);
+  const res = await fetch(API + "/api/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sentence: text })
+  });
 
-  try {
-    const res = await fetch(API + "/api/check", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ sentence: text })
-    });
+  const data = await res.json();
 
-    const data = await res.json();
+  let reply = data.reply || "..."
 
-    console.log("Backend response:", data);
+  if (data.rewrite) reply += "\n\n✍️ " + data.rewrite;
 
-    // remove loading
-    document.getElementById(loadingId)?.remove();
+  addMsg(reply, "ai");
 
-    let finalMessage = "";
-
-    if (data.feedback) {
-      finalMessage = data.feedback;
-
-      if (data.sat_skill) {
-        finalMessage += `\n\n🎯 Focus: ${data.sat_skill}`;
-      }
-
-      if (data.vocabulary_boost) {
-        finalMessage += `\n💡 Vocab: ${data.vocabulary_boost}`;
-      }
-
-      if (data.suggestion) {
-        finalMessage += `\n✍️ Rewrite: "${data.suggestion}"`;
-      }
-
-    } else if (data.error) {
-      finalMessage = `⚠️ Backend Error: ${data.error}`;
-    } else {
-      finalMessage = `⚠️ Unexpected response:\n${JSON.stringify(data, null, 2)}`;
-    }
-
-    addMsg(finalMessage, "ai");
-
-  } catch (err) {
-    console.error(err);
-
-    document.getElementById(loadingId)?.remove();
-
-    addMsg("⚠️ Network error. Please try again.", "ai");
-  }
+  speak(reply);
 }
 
-// Enter key support
-document.getElementById("input").addEventListener("keypress", function(e) {
-  if (e.key === "Enter") {
-    send();
-  }
-});
+// ---------------- VOICE INPUT ----------------
+function startVoice() {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  const recognition = new SpeechRecognition();
+
+  recognition.lang = "en-US";
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+
+    document.getElementById("status").innerText = "You said: " + text;
+
+    send(text);
+  };
+
+  recognition.start();
+}
+
+// ---------------- TEXT TO SPEECH ----------------
+function speak(text) {
+  const speech = new SpeechSynthesisUtterance(text);
+  speech.rate = 1;
+  speech.pitch = 1;
+  window.speechSynthesis.speak(speech);
+}
+
 </script>
 
 </body>
