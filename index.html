@@ -14,7 +14,6 @@ body {
   background: linear-gradient(180deg, #eef2ff, #ffffff);
 }
 
-/* AI FACE */
 .face {
   width: 120px;
   height: 120px;
@@ -58,44 +57,13 @@ body {
 
 <body class="h-screen flex flex-col">
 
-<!-- HEADER -->
 <div class="p-3 bg-white text-center shadow">
   <h1 class="font-bold">📘 AI English Tutor Pro</h1>
 </div>
 
-<!-- MODE BUTTON -->
-<div class="p-2 flex justify-center">
-  <button onclick="toggleMode()"
-    class="bg-indigo-600 text-white px-4 py-2 rounded-xl">
-    Switch Talk Mode 🎤
-  </button>
-</div>
+<div id="chat" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
 
-<!-- CHAT MODE -->
-<div id="chatMode" class="flex flex-col flex-1 p-3 overflow-y-auto">
-  <div id="chat" class="space-y-2 flex flex-col"></div>
-</div>
-
-<!-- TALK MODE -->
-<div id="talkMode" class="hidden flex flex-col flex-1 items-center justify-center">
-
-  <div class="face">
-    <div class="eye left"></div>
-    <div class="eye right"></div>
-    <div class="mouth"></div>
-  </div>
-
-  <p id="status" class="mt-6 text-gray-600">Tap mic and speak...</p>
-
-</div>
-
-<!-- INPUT -->
 <div class="p-3 bg-white border-t flex gap-2">
-
-  <button onclick="startVoice()" class="bg-green-500 text-white px-4 rounded-xl">
-    🎤
-  </button>
-
   <input id="input"
     class="flex-1 border p-2 rounded-xl"
     placeholder="Type your sentence..."
@@ -105,24 +73,12 @@ body {
     class="bg-indigo-600 text-white px-4 rounded-xl">
     Send
   </button>
-
 </div>
 
 <script>
 
 const API = "https://giulia-english-tutor-backend-1.onrender.com";
 
-let talkMode = false;
-
-// ---------------- MODE ----------------
-function toggleMode() {
-  talkMode = !talkMode;
-
-  document.getElementById("chatMode").classList.toggle("hidden");
-  document.getElementById("talkMode").classList.toggle("hidden");
-}
-
-// ---------------- CHAT ----------------
 function addMsg(text, role) {
   const div = document.createElement("div");
 
@@ -135,9 +91,9 @@ function addMsg(text, role) {
   div.innerText = text;
 
   document.getElementById("chat").appendChild(div);
+  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
 }
 
-// ---------------- SEND ----------------
 async function send(textOverride) {
 
   const input = document.getElementById("input");
@@ -148,52 +104,21 @@ async function send(textOverride) {
   addMsg(text, "user");
   input.value = "";
 
-  const res = await fetch(API + "/api/check", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sentence: text })
-  });
+  addMsg("Thinking...", "ai");
 
-  const data = await res.json();
+  try {
+    const res = await fetch(API + "/api/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sentence: text })
+    });
 
-  let reply = data.reply || "..."
+    const data = await res.json();
 
-  if (data.rewrite) reply += "\n\n✍️ " + data.rewrite;
+    // remove "Thinking..."
+    const chat = document.getElementById("chat");
+    chat.removeChild(chat.lastChild);
 
-  addMsg(reply, "ai");
+    let reply = data.reply || "No response";
 
-  speak(reply);
-}
-
-// ---------------- VOICE INPUT ----------------
-function startVoice() {
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  const recognition = new SpeechRecognition();
-
-  recognition.lang = "en-US";
-
-  recognition.onresult = (event) => {
-    const text = event.results[0][0].transcript;
-
-    document.getElementById("status").innerText = "You said: " + text;
-
-    send(text);
-  };
-
-  recognition.start();
-}
-
-// ---------------- TEXT TO SPEECH ----------------
-function speak(text) {
-  const speech = new SpeechSynthesisUtterance(text);
-  speech.rate = 1;
-  speech.pitch = 1;
-  window.speechSynthesis.speak(speech);
-}
-
-</script>
-
-</body>
-</html>
+    if (data.rewrite) reply += "\n\n✍️ Rewrite
