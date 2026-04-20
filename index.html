@@ -1,137 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>English Tutor App</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI English Tutor Pro</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background: #f4f4f4;
-    }
+<script src="https://cdn.tailwindcss.com"></script>
 
-    .container {
-      max-width: 600px;
-      margin: auto;
-      padding: 10px;
-    }
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(180deg, #eef2ff, #ffffff);
+}
 
-    h2 {
-      text-align: center;
-    }
+.face {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: #4f46e5;
+  margin: auto;
+  position: relative;
+  animation: pulse 2s infinite;
+}
 
-    .chat-box {
-      background: white;
-      height: 70vh;
-      overflow-y: auto;
-      border-radius: 10px;
-      padding: 10px;
-      border: 1px solid #ddd;
-    }
+.eye {
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 40px;
+}
 
-    .msg {
-      padding: 8px;
-      margin: 5px;
-      border-radius: 8px;
-      max-width: 80%;
-      word-wrap: break-word;
-    }
+.eye.left { left: 35px; }
+.eye.right { right: 35px; }
 
-    .user {
-      background: #DCF8C6;
-      margin-left: auto;
-      text-align: right;
-    }
+.mouth {
+  width: 30px;
+  height: 10px;
+  border-bottom: 3px solid white;
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+}
 
-    .bot {
-      background: #eee;
-      margin-right: auto;
-    }
-
-    .input-box {
-      display: flex;
-      margin-top: 10px;
-      gap: 10px;
-    }
-
-    input {
-      flex: 1;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      padding: 10px 15px;
-      border: none;
-      border-radius: 8px;
-      background: green;
-      color: white;
-      cursor: pointer;
-    }
-  </style>
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+</style>
 </head>
 
-<body>
+<body class="h-screen flex flex-col">
 
-<div class="container">
-  <h2>English Tutor 📚</h2>
+<div class="p-3 bg-white text-center shadow">
+  <h1 class="font-bold">📘 AI English Tutor Pro</h1>
+</div>
 
-  <div id="chat" class="chat-box"></div>
+<div class="p-2 flex justify-center">
+  <button onclick="toggleMode()"
+    class="bg-indigo-600 text-white px-4 py-2 rounded-xl">
+    Switch Talk Mode 🎤
+  </button>
+</div>
 
-  <div class="input-box">
-    <input id="input" placeholder="Type a sentence..." />
-    <button onclick="sendMessage()">Send</button>
+<div id="chatMode" class="flex flex-col flex-1 p-3 overflow-y-auto">
+  <div id="chat" class="space-y-2 flex flex-col"></div>
+</div>
+
+<div id="talkMode" class="hidden flex flex-col flex-1 items-center justify-center">
+
+  <div class="face">
+    <div class="eye left"></div>
+    <div class="eye right"></div>
+    <div class="mouth"></div>
   </div>
+
+  <p id="status" class="mt-6 text-gray-600">Tap mic and speak...</p>
+
+</div>
+
+<div class="p-3 bg-white border-t flex gap-2">
+
+  <button onclick="startVoice()" class="bg-green-500 text-white px-4 rounded-xl">
+    🎤
+  </button>
+
+  <input id="input"
+    class="flex-1 border p-2 rounded-xl"
+    placeholder="Type your sentence..."
+  />
+
+  <button onclick="send()"
+    class="bg-indigo-600 text-white px-4 rounded-xl">
+    Send
+  </button>
+
 </div>
 
 <script>
-  const chat = document.getElementById("chat");
+
+const API = "https://giulia-english-tutor-backend-1.onrender.com";
+
+let talkMode = false;
+
+function toggleMode() {
+  talkMode = !talkMode;
+  document.getElementById("chatMode").classList.toggle("hidden");
+  document.getElementById("talkMode").classList.toggle("hidden");
+}
+
+function addMsg(text, role) {
+  const div = document.createElement("div");
+
+  div.className =
+    "p-3 rounded-xl max-w-[80%] whitespace-pre-wrap " +
+    (role === "user"
+      ? "bg-indigo-600 text-white ml-auto"
+      : "bg-gray-100");
+
+  div.innerText = text;
+
+  document.getElementById("chat").appendChild(div);
+}
+
+async function send(textOverride) {
+
   const input = document.getElementById("input");
+  const text = textOverride || input.value;
 
-  function addMessage(text, type) {
-    const div = document.createElement("div");
-    div.className = "msg " + type;
-    div.innerText = text;
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
-  }
+  if (!text) return;
 
-  async function sendMessage() {
-    const text = input.value.trim();
-    if (!text) return;
+  addMsg(text, "user");
+  input.value = "";
 
-    addMessage(text, "user");
-    input.value = "";
-
-    addMessage("Typing...", "bot");
-
-    try {
-      const res = await fetch("https://giulia-english-tutor-backend-1.onrender.com/tutor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text })
-      });
-
-      const data = await res.json();
-
-      chat.removeChild(chat.lastChild); // remove "Typing..."
-
-      addMessage(data.reply || "No response from tutor", "bot");
-
-    } catch (err) {
-      chat.removeChild(chat.lastChild);
-      addMessage("Error connecting to server", "bot");
-    }
-  }
-
-  input.addEventListener("keypress", function(e) {
-    if (e.key === "Enter") sendMessage();
+  const res = await fetch(API + "/tutor", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: text })
   });
 
-  addMessage("Welcome 👋 Type a sentence to start learning English!", "bot");
+  const data = await res.json();
+
+  let reply = data.reply || "No response";
+
+  if (data.rewrite) reply += "\n\n✍️ " + data.rewrite;
+
+  addMsg(reply, "ai");
+  speak(reply);
+}
+
+function startVoice() {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    document.getElementById("status").innerText = "You said: " + text;
+    send(text);
+  };
+
+  recognition.start();
+}
+
+function speak(text) {
+  const speech = new SpeechSynthesisUtterance(text);
+  speech.rate = 1;
+  speech.pitch = 1;
+  window.speechSynthesis.speak(speech);
+}
+
+addMsg("Welcome 👋 Type a sentence to start learning English!", "ai");
+
 </script>
 
 </body>
