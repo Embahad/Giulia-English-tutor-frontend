@@ -8,7 +8,7 @@
   <style>
     body {
       margin: 0;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       background: #f4f4f4;
     }
 
@@ -33,44 +33,58 @@
       flex: 1;
       padding: 10px;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
     }
 
     .msg {
       padding: 10px;
-      margin: 5px;
-      border-radius: 10px;
+      margin: 6px 0;
+      border-radius: 12px;
       max-width: 80%;
+      white-space: pre-line;
     }
 
     .user {
       background: #4f46e5;
       color: white;
-      margin-left: auto;
+      align-self: flex-end;
       text-align: right;
     }
 
     .ai {
       background: #eee;
-      margin-right: auto;
+      align-self: flex-start;
     }
 
     .input-area {
       display: flex;
       padding: 10px;
       border-top: 1px solid #ddd;
+      background: white;
     }
 
     input {
       flex: 1;
-      padding: 10px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
     }
 
     button {
       margin-left: 10px;
+      padding: 12px;
       background: #4f46e5;
       color: white;
       border: none;
-      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background: #4338ca;
     }
   </style>
 </head>
@@ -82,11 +96,14 @@
   <header>📘 English Tutor</header>
 
   <div class="chat" id="chat">
-    <div class="msg ai">Hi! I’m your English tutor. Write a sentence 😊</div>
+    <div class="msg ai">
+Hi! I’m your AI English tutor 😊  
+Write a sentence and I’ll help you improve it.
+    </div>
   </div>
 
   <div class="input-area">
-    <input id="input" placeholder="Type here..." />
+    <input id="input" placeholder="Type your sentence..." />
     <button onclick="send()">Send</button>
   </div>
 
@@ -95,35 +112,90 @@
 <script>
 const API = "https://giulia-english-tutor-backend.onrender.com";
 
-function addMsg(text, type) {
+// Add message to chat
+function addMsg(text, type, id = null) {
   const div = document.createElement("div");
   div.className = "msg " + type;
   div.innerText = text;
+
+  if (id) div.id = id;
+
   document.getElementById("chat").appendChild(div);
+
+  // auto scroll
+  document.getElementById("chat").scrollTop =
+    document.getElementById("chat").scrollHeight;
 }
 
+// Send message to backend
 async function send() {
   const input = document.getElementById("input");
-  const text = input.value;
+  const text = input.value.trim();
   if (!text) return;
 
   addMsg(text, "user");
   input.value = "";
 
+  // Show loading
+  const loadingId = "loading-" + Date.now();
+  addMsg("Thinking...", "ai", loadingId);
+
   try {
     const res = await fetch(API + "/api/check", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ sentence: text })
     });
 
     const data = await res.json();
-    addMsg(data.feedback, "ai");
+
+    console.log("Backend response:", data);
+
+    // Remove loading message
+    document.getElementById(loadingId)?.remove();
+
+    let finalMessage = "";
+
+    if (data.feedback) {
+      finalMessage = data.feedback;
+
+      if (data.sat_skill) {
+        finalMessage += `\n\n🎯 Focus: ${data.sat_skill}`;
+      }
+
+      if (data.vocabulary_boost) {
+        finalMessage += `\n💡 Vocab: ${data.vocabulary_boost}`;
+      }
+
+      if (data.suggestion) {
+        finalMessage += `\n✍️ Rewrite: "${data.suggestion}"`;
+      }
+
+    } else if (data.error) {
+      finalMessage = `⚠️ Backend Error: ${data.error}`;
+    } else {
+      finalMessage = `⚠️ Unexpected response:\n${JSON.stringify(data, null, 2)}`;
+    }
+
+    addMsg(finalMessage, "ai");
 
   } catch (err) {
-    addMsg("Error connecting to server 😢", "ai");
+    console.error(err);
+
+    document.getElementById(loadingId)?.remove();
+
+    addMsg("⚠️ Network error. Please try again.", "ai");
   }
 }
+
+// Press Enter to send
+document.getElementById("input").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") {
+    send();
+  }
+});
 </script>
 
 </body>
