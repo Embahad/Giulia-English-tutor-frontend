@@ -103,7 +103,32 @@ function addMsg(text, type) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-// ✅ FIXED SEND FUNCTION (GLOBAL)
+//
+// ✅ FIXED SPEECH FUNCTION (AI TALK BACK)
+//
+function speak(text) {
+  if (!text) return;
+
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US";
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+
+  // ensure voices load properly
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length > 0) {
+    utterance.voice = voices[0];
+  }
+
+  window.speechSynthesis.speak(utterance);
+}
+
+//
+// ✅ SEND FUNCTION
+//
 window.send = async function () {
 
   const text = input.value.trim();
@@ -134,13 +159,18 @@ window.send = async function () {
 
     addMsg(reply, "ai");
 
+    // 🔥 AI SPEAKS HERE
+    setTimeout(() => speak(reply), 300);
+
   } catch (err) {
     chat.removeChild(chat.lastChild);
     addMsg("Error connecting to server", "ai");
   }
 };
 
-// ✅ MIC FUNCTION
+//
+// 🎤 MIC FUNCTION
+//
 function startMic() {
 
   const SpeechRecognition =
@@ -172,7 +202,14 @@ function startMic() {
   recognition.start();
 }
 
-addMsg("Welcome 👋 Type or speak a sentence to start learning English!", "ai");
+//
+// 🔧 FIX: ensure voices load on mobile
+//
+window.speechSynthesis.onvoiceschanged = () => {
+  window.speechSynthesis.getVoices();
+};
+
+addMsg("Welcome 👋 Type or speak a sentence!", "ai");
 
 </script>
 
